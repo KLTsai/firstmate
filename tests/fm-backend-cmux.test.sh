@@ -496,6 +496,46 @@ test_create_task_creates_and_parses_ids() {
   pass "fm_backend_cmux_create_task: creates a workspace and parses workspace_id/surface_id from list responses"
 }
 
+test_create_task_waits_for_workspace_and_surface_visibility() {
+  local dir fb out title
+  dir="$TMP_ROOT/create-task-stale-list"; mkdir -p "$dir/responses"
+  title=$(cmux_expected_scoped_title fm-staletask)
+  printf '{"workspaces":[]}' > "$dir/responses/1.out"
+  # 2: new-workspace acknowledges creation before the list reflects it.
+  printf '{"workspaces":[]}' > "$dir/responses/3.out"
+  printf '{"workspaces":[]}' > "$dir/responses/4.out"
+  cmux_workspace_list_response "$dir" 5 "bbbbbbbb-1111-1111-1111-111111111111" "unrelated-title"
+  cmux_workspace_list_response "$dir" 6 "bbbbbbbb-1111-1111-1111-111111111111" "$title"
+  # Surface discovery may lag the title as well.
+  cmux_panes_empty_response "$dir" 7
+  cmux_workspace_list_response "$dir" 8 "bbbbbbbb-1111-1111-1111-111111111111" "$title"
+  cmux_panes_response "$dir" 9 "cccccccc-2222-2222-2222-222222222222"
+  fb=$(make_cmux_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_CMUX_LOG="$dir/log" FM_CMUX_RESPONSES="$dir/responses" \
+    bash -c '. "$0/bin/backends/cmux.sh"; fm_backend_cmux_create_task fm-staletask /tmp/proj' "$ROOT" )
+  [ "$out" = "bbbbbbbb-1111-1111-1111-111111111111 cccccccc-2222-2222-2222-222222222222" ] \
+    || fail "create_task should wait for the exact scoped title and its default surface, got '$out'"
+  [ "$(grep -ac $'\x1f''new-workspace' "$dir/log")" -eq 1 ] \
+    || fail "create_task should create only one workspace while waiting for visibility"
+  pass "fm_backend_cmux_create_task: waits for delayed exact-title and default-surface visibility"
+}
+
+test_create_task_fails_when_workspace_never_becomes_visible() {
+  local dir fb out status
+  dir="$TMP_ROOT/create-task-invisible"; mkdir -p "$dir/responses"
+  printf '{"workspaces":[]}' > "$dir/responses/1.out"
+  fb=$(make_cmux_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_CMUX_LOG="$dir/log" FM_CMUX_RESPONSES="$dir/responses" \
+    bash -c '. "$0/bin/backends/cmux.sh"; fm_backend_cmux_create_task fm-invisible /tmp/proj' "$ROOT" 2>&1 )
+  status=$?
+  [ "$status" -ne 0 ] || fail "create_task should fail when the title never becomes visible"
+  assert_contains "$out" "could not resolve a cmux workspace id" \
+    "create_task should identify title-resolution failure after the bounded wait"
+  [ "$(grep -ac $'\x1f''new-workspace' "$dir/log")" -eq 1 ] \
+    || fail "create_task should not create another workspace while waiting"
+  pass "fm_backend_cmux_create_task: fails after a bounded wait without inventing a workspace id"
+}
+
 # --- target_ready / capture ---------------------------------------------------
 
 test_target_ready_fails_when_target_absent() {
@@ -1130,6 +1170,8 @@ test_ensure_running_fails_fast_on_denied_without_launching
 test_ensure_running_fails_fast_on_unauth_without_launching
 test_create_task_refuses_duplicate_label
 test_create_task_creates_and_parses_ids
+test_create_task_waits_for_workspace_and_surface_visibility
+test_create_task_fails_when_workspace_never_becomes_visible
 test_target_ready_fails_when_target_absent
 test_target_ready_checks_expected_label
 test_target_ready_rejects_label_mismatch

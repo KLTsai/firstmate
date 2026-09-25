@@ -1855,6 +1855,28 @@ Current active CLI findings:
 | Last surface | `close-surface` on the only surface | Refused with `invalid_state: Cannot close the last surface`. |
 | Last workspace | `close-workspace` on the only workspace in a window | Printed success but left the workspace present. |
 
+The dispatch reproduction showed that cmux can acknowledge `new-workspace` before the exact scoped title is visible to an immediate `workspace list` call; a lookup about 0.3 seconds later succeeded.
+The 2026-09-25 live verification used cmux 0.64.25 build 106 on macOS aarch64.
+The current create path polls that exact title and its default surface for up to 20 reads at 0.1-second intervals, while the pre-create duplicate check still refuses an existing title.
+The portable regression exercises create acknowledgement, stale and unrelated workspace-list entries, delayed surface visibility, and bounded failure through `fm_backend_cmux_create_task`.
+The verification commands were:
+
+```sh
+cmux version
+cmux ping
+bin/fm-test-run.sh tests/fm-backend-cmux.test.sh
+. bin/backends/cmux.sh
+. tests/cmux-test-safety.sh
+fm_backend_cmux_create_task fm-test-create-visibility-0925 /tmp
+fm_backend_cmux_cli list-panes --workspace <returned-workspace-id> --json --id-format uuids
+cmux_refuse_if_unsafe <returned-workspace-id> fm-test-create-visibility-0925
+cmux_safe_close_workspace <returned-workspace-id> fm-test-create-visibility-0925
+```
+
+The CLI returned `cmux 0.64.25 (106) [b685a275c]` and `PONG`.
+The portable test returned `failed=0 skipped_gate=0`.
+The live public create call returned one workspace and surface id, `list-panes` showed one untouched default surface, and the exact guarded close left no workspace with that scoped title.
+
 The last-workspace workaround was reverified on 2026-07-10 in Automation mode.
 After creating one unfocused unnamed sibling in the same window, `close-workspace` removed the exact task workspace and left only cmux's default sibling.
 A selected non-last workspace closed directly, proving that window cardinality rather than selection is the trigger.
