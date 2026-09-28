@@ -1816,7 +1816,7 @@ The fake-Orca suite covers readiness, registration, create response parsing, met
 
 ## cmux
 
-The current compatibility floor is cmux 0.64, and the active live evidence uses 0.64.17 build 97 on macOS aarch64.
+The current compatibility floor is cmux 0.64.
 Real tests use only exact `fm-test-` workspaces guarded by `tests/cmux-test-safety.sh` and never quit or relaunch the captain's app.
 
 ```sh
@@ -1824,7 +1824,7 @@ cmux version
 cmux ping
 ```
 
-Observed version:
+Version used for the socket-control-mode checks:
 
 ```text
 cmux 0.64.17 (97) [9ed29d81a]
@@ -1855,7 +1855,7 @@ Current active CLI findings:
 | Last surface | `close-surface` on the only surface | Refused with `invalid_state: Cannot close the last surface`. |
 | Last workspace | `close-workspace` on the only workspace in a window | Printed success but left the workspace present. |
 
-The dispatch reproduction showed that cmux can acknowledge `new-workspace` before the exact scoped title is visible to an immediate `workspace list` call; a lookup about 0.3 seconds later succeeded.
+The live create observation showed that cmux can acknowledge `new-workspace` before the exact scoped title is visible to an immediate `workspace list` call; a lookup about 0.3 seconds later succeeded.
 The 2026-09-25 live verification used cmux 0.64.25 build 106 on macOS aarch64.
 The current create path polls that exact title and its default surface for up to 20 reads at 0.1-second intervals, while the pre-create duplicate check still refuses an existing title.
 The portable regression exercises create acknowledgement, stale and unrelated workspace-list entries, delayed surface visibility, and bounded failure through `fm_backend_cmux_create_task`.
