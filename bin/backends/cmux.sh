@@ -344,9 +344,10 @@ fm_backend_cmux_surface_id_for_workspace() {  # <workspace_id>
 # fm_backend_cmux_create_task: create the task's workspace (one surface),
 # refusing an existing live <label> (finding #6: cmux enforces no uniqueness
 # itself). After new-workspace acknowledges, workspace list can briefly omit
-# its title, so resolution polls for the exact scoped title and its default
-# surface for up to about two seconds. A fresh workspace already has one
-# surface, so no separate new-surface call is needed. --focus false is passed for
+# its title, so resolution makes up to 20 polling attempts with a 0.1-second
+# sleep between attempts for the exact scoped title and its default surface.
+# A fresh workspace already has one surface, so no separate new-surface call
+# is needed. --focus false is passed for
 # defense in depth though verified to already be the default (finding:
 # workspace/surface/pane create all default focus to false) - no
 # focus-restore dance is needed, unlike zellij. Echoes "<workspace_id>
