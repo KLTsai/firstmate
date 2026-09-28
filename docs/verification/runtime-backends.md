@@ -1857,8 +1857,8 @@ Current active CLI findings:
 
 The live create observation showed that cmux can acknowledge `new-workspace` before the exact scoped title is visible to an immediate `workspace list` call; a lookup about 0.3 seconds later succeeded.
 The 2026-09-25 live verification used cmux 0.64.25 build 106 on macOS aarch64.
-The current create path makes up to 20 polling attempts, sleeping 0.1 seconds between attempts, to resolve that exact title and its default surface, while the pre-create duplicate check still refuses an existing title.
-The portable regression exercises create acknowledgement, stale and unrelated workspace-list entries, delayed surface visibility, and bounded failure when either the workspace or its default surface remains unavailable through `fm_backend_cmux_create_task`.
+The polling and duplicate-title behavior for this observation is documented in [cmux backend](../cmux-backend.md).
+The portable regression exercises create acknowledgement, stale and unrelated workspace-list entries, delayed surface visibility, and bounded failure when either the workspace or its default surface remains unavailable through `fm_backend_cmux_create_task`, while confirming `new-workspace` is called only once.
 The verification commands were:
 
 ```sh
